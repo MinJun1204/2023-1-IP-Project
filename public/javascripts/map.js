@@ -281,15 +281,13 @@ function initUI() {
 
 async function showDirections() {
     let directions = await getDirection(departure, destination)
-
-    directionResult = directions.result
-    console.log(directions)
+    directions = await lowBusFilter(directions.result)
 
     $('#map').hide()
     $('#result').show()
 
-    for (let i in directions.result.path) {
-        let direction = directions.result.path[i]
+    for (let i in directions) {
+        let direction = directions[i]
         // console.log(direction)
 
         let $direction = $(`<div class="direction" id="direction${i}"></div>`)
@@ -331,12 +329,69 @@ async function showDirections() {
     }
 
     $('.direction').on('click', function() {
-        let route = directionResult.path[this.id.replace('direction', '')]
+        let route = directions[this.id.replace('direction', '')]
         showDetailRoute(route)
     })
 }
 
-function showDetailRoute(route) {
+async function lowBusFilter(directions) {
+    let result = []
+
+    for (let path of directions.path) {
+        let isAllLowBus = true
+        
+        for (let subPath of path.subPath) {
+            // console.log('------------------------')
+
+            if (subPath.trafficType == 2) {
+                let isLowBusExists = false
+                let lanes = []
+
+                for (let l of subPath.lane) {
+                    lanes.push(l.busID)
+                }
+
+                // console.log('Lanes:', lanes)
+
+                let result = await getRealTimeArrival(subPath.startID)
+
+                // console.log(result)
+
+                for (let lowBuses of result.result.real) {
+                    // console.log(lowBuses.routeId, lanes, parseInt(lowBuses.routeId) in lanes)
+                    if (lanes.includes(parseInt(lowBuses.routeId))) {
+                        // console.log('Low Bus:', lowBuses.routeNm)
+                        isLowBusExists = true
+                        break
+                    }
+                    // console.log('lowBus:', lowBuses)
+                }
+
+                if (!isLowBusExists) {
+                    isAllLowBus = false
+                    break
+                }
+            }
+        }
+
+        if (isAllLowBus) {
+            result.push(path)
+        }
+    }
+
+    return result
+}
+
+async function getRealTimeArrival(id) {
+    let URL = 'https://api.odsay.com/v1/api/realtimeStation?'
+            + `stationID=${id}&`
+            + `lowBus=1&`
+            + `apiKey=${API_KEY}`
+
+    return await fetchAPI(URL)
+}
+
+async function showDetailRoute(route) {
     $('#result').hide(500)
     $('#detail').show(500).empty()
 
@@ -356,8 +411,22 @@ function showDetailRoute(route) {
             $path = $('<div></div>')
             $start = $(`<div><h2>버스 </h2><p>${path.startName} 정류장 (${path.startArsID.replace('-', '')}) 승차 | ${path.sectionTime}분</p><br></div>`)
 
+            let lowBusArrival = await getRealTimeArrival(path.startID)
+            console.log(lowBusArrival)
+            
             for (let lane of path.lane) {
-                $start.append(`<p>${lane.busNo}&nbsp;</p>`)
+                for (let lowBusLane of lowBusArrival.result.real) {
+                    if (lowBusLane.routeId == lane.busID) {
+                        console.log(lowBusLane)
+
+                        if (lowBusLane.arrival1) {
+                            $start.append(`<div><p>${lane.busNo} (저상) | ${Math.floor(lowBusLane.arrival1.arrivalSec / 60)}분 ${lowBusLane.arrival1.arrivalSec % 60}초 | ${lowBusLane.arrival1.leftStation}정류장 전<p></div>`)
+                        } else {
+
+                        }
+                    }
+                }
+
             }
 
             $end = $(`<div><h2>하차 </h2><p>${path.endName} 정류장 (${path.endArsID.replace('-', '')}) 하차</div>`)
