@@ -10,6 +10,7 @@ $(document).ready(async function() {
     initUI()
     initMap()
     getGeolocation()
+    setPointByClick()
     search()
 })
 
@@ -116,6 +117,43 @@ function getGeolocation() {
     }
 }
 
+function setPointByClick() {
+    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+        let latlng = mouseEvent.latLng
+
+        if (!departure && !destination) {
+            setMarkerByClick(latlng.getLng(), latlng.getLat(), true)
+            departure = { x: latlng.getLng(), y: latlng.getLat() }
+            console.log(departure)
+        } else if (departure && !destination) {
+            setMarkerByClick(latlng.getLng(), latlng.getLat(), false)
+            destination = { x: latlng.getLng(), y: latlng.getLat() }
+        }
+
+        if (departure && destination) showDirections()
+    })
+}
+
+function setMarkerByClick(x, y, isDeparture) {
+    let imageSrc
+
+    if (isDeparture) imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/red_b.png'
+    else             imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/blue_b.png'
+
+    let imageSize = new kakao.maps.Size(64, 49)
+    let imageOption = { offset: new kakao.maps.Point(27, 69) }
+
+    let markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption)
+    let markerPosition = new kakao.maps.LatLng(y, x)
+
+    let marker = new kakao.maps.Marker({
+        position: markerPosition,
+        image: markerImage
+    })
+
+    marker.setMap(map)
+}
+
 function search() {
     $('input').keypress(async function(e) {
         let input = this
@@ -157,7 +195,7 @@ function search() {
                             $('#map').show(500)
 
                             setCenter(departure.x, departure.y)
-                            setMarker(departure.x, departure.y)
+                            setMarkerByClick(departure.x, departure.y, true)
                         } else {
                             destination = searchResult[id]
                             $(input).val(destination.place_name)
@@ -167,7 +205,7 @@ function search() {
                             $('#map').show(500)
 
                             setCenter(destination.x, destination.y)
-                            setMarker(destination.x, destination.y)
+                            setMarkerByClick(departure.x, departure.y, false)
                         }
 
                         if (departure && destination) {
@@ -245,7 +283,7 @@ async function showDirections() {
     let directions = await getDirection(departure, destination)
 
     directionResult = directions.result
-    // console.log(directions)
+    console.log(directions)
 
     $('#map').hide()
     $('#result').show()
