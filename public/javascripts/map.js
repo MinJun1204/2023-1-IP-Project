@@ -106,32 +106,119 @@ async function initMap() {
 
 function getGeolocation() {
     if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition((position) => {
-            console.log('User Position: ', position)
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            console.log('User Position:', position)
 
             setCenter(position.coords.longitude, position.coords.latitude)
             setMarker(position.coords.longitude, position.coords.latitude)
+
+            let lowBusStations = await searchLowBusStations(position)
+            
+            showLowBusStations(lowBusStations.result.station)
         })
+
     } else {
         alert('내 위치 정보를 가져올 수 없습니다.')
     }
 }
 
+async function searchLowBusStations(position) {
+    let URL = 'https://api.odsay.com/v1/api/pointSearch?'
+            + `lang=0&`
+            + `x=${position.coords.longitude}&`
+            + `y=${position.coords.latitude}&`
+            + `radius=500&`
+            + `apiKey=${API_KEY}`
+
+    console.log(URL)
+    return await fetchAPI(URL)
+}
+
+async function showLowBusStations(stations) {
+    console.log(stations)
+
+    for (let station of stations) {
+        let iwContent = `<div style="padding: 5px;"><h3>${station.stationName}</h3><p>${station.arsID.replace('-', '')}</p>`
+        let realtimeInfo = await getRealTimeArrival(station.stationID)
+
+        if (realtimeInfo.result.error) continue
+
+        for (let busRoute of realtimeInfo.result.real) {
+
+            iwContent += `<b>${busRoute.routeNm}&nbsp;</b>`
+
+            if (busRoute.arrival1)
+                iwContent += `<span>${Math.floor(busRoute.arrival1.arrivalSec / 60)}분 ${busRoute.arrival1.arrivalSec % 60}초 | ${busRoute.arrival1.leftStation}정류장 전</span><br>`
+            else
+                iwContent += `<span>도착 정보 없음</span><br>`
+        }
+
+        let markerPosition = new kakao.maps.LatLng(station.y, station.x)
+        let marker = new kakao.maps.Marker({
+            position: markerPosition,
+            clickable: true
+        })
+
+        marker.setMap(map)
+
+        iwContent += '</div>'
+
+        let iwRemovable = true
+        let infoWindow = new kakao.maps.InfoWindow({
+            content: iwContent,
+            removable: iwRemovable
+        })
+
+        kakao.maps.event.addListener(marker, 'click', function() {
+            infoWindow.open(map, marker)
+        })
+    }
+}
+
+
 function setPointByClick() {
-    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+    kakao.maps.event.addListener(map, 'click', async function(mouseEvent) {
         let latlng = mouseEvent.latLng
 
         if (!departure && !destination) {
             setMarkerByClick(latlng.getLng(), latlng.getLat(), true)
-            departure = { x: latlng.getLng(), y: latlng.getLat() }
-            console.log(departure)
+            coordsToAddress(latlng, true)
         } else if (departure && !destination) {
             setMarkerByClick(latlng.getLng(), latlng.getLat(), false)
-            destination = { x: latlng.getLng(), y: latlng.getLat() }
+            coordsToAddress(latlng, false)
         }
-
-        if (departure && destination) showDirections()
     })
+}
+
+function coordsToAddress(latlng, isDeparture) {
+    let geocoder = new kakao.maps.services.Geocoder()
+    let ret = {}
+
+    ret.x = latlng.getLng()
+    ret.y = latlng.getLat()
+
+    geocoder.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
+        if (status == kakao.maps.services.Status.OK) {
+            if (result[0].road_address) {
+                ret.place_name = result[0].road_address.address_name
+            } else {
+                ret.place_name = result[0].address.address_name
+            }
+
+            console.log(ret)
+
+            if (isDeparture) {
+                departure = ret
+                $('#departure').val(ret.place_name)
+            } else {
+                destination = ret
+                $('#destination').val(ret.place_name)
+            }
+
+            if (departure && destination) showDirections()
+        } 
+    })
+
 }
 
 function setMarkerByClick(x, y, isDeparture) {
@@ -355,7 +442,12 @@ async function lowBusFilter(directions) {
 
                 let result = await getRealTimeArrival(subPath.startID)
 
-                // console.log(result)
+                console.log(result)
+
+                if (result.result.error) {
+                    isAllLowBus = false
+                    break
+                }
 
                 for (let lowBuses of result.result.real) {
                     // console.log(lowBuses.routeId, lanes, parseInt(lowBuses.routeId) in lanes)
@@ -393,7 +485,12 @@ async function getRealTimeArrival(id) {
 
 async function showDetailRoute(route) {
     $('#result').hide(500)
-    $('#detail').show(500).empty()
+    $('#detail').show(500).empty().append($(`<button id="showMap">지도 보기</button>`))
+
+    $('#showMap').on('click', function() {
+        $('#map').show()
+        $('#detail').hide()
+    })
 
     console.log(route)
 
@@ -439,6 +536,8 @@ async function showDetailRoute(route) {
     }
 
     $('#detail').append($end)
+
+    showRouteOnMap(route)
 }
 
 // Map Functions
@@ -455,4 +554,34 @@ function setMarker(x, y) {
     })
 
     marker.setMap(map)
+}
+
+function showRouteOnMap(route) {
+    let linePath = []
+
+    linePath.push(new kakao.maps.LatLng(departure.y, departure.x))
+
+    for (let subPath of route.subPath) {
+        if (subPath.trafficType == 1 || subPath.trafficType == 2) {
+            linePath.push(new kakao.maps.LatLng(subPath.startY, subPath.startX))
+
+            for (let station of subPath.passStopList.stations) {
+                linePath.push(new kakao.maps.LatLng(station.y, station.x))
+            }
+
+            linePath.push(new kakao.maps.LatLng(subPath.endY, subPath.endX))
+        }
+    }
+
+    linePath.push(new kakao.maps.LatLng(destination.y, destination.x))
+
+    let polyline = new kakao.maps.Polyline({
+        path: linePath,
+        strokeWeight: 10,
+        strokeColor: '#1e21c7',
+        strokeOpacity: 1,
+        strokeStyle: 'solid'
+    })
+
+    polyline.setMap(map)
 }
