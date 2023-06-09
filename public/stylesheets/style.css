@@ -1,7 +1,9 @@
+@import url(//fonts.googleapis.com/earlyaccess/nanumgothic.css);
+
 * {
   margin: 0;
   padding: 0;
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: 'Nanum Gothic', 'Noto Sans KR', sans-serif;
 }
 
 *, *:after, *:before {
@@ -38,6 +40,19 @@ header h2 {
   text-align: center;
 }
 
+div {
+  padding: 5px;
+}
+
+#search h2, #result h2 {
+  font-size: 1.3rem;
+  margin-left: 5px;
+}
+
+p {
+  margin: 5px;
+}
+
 #map {
   height: 80%;
 }
@@ -58,5 +73,17 @@ header h2 {
 
 #detail p {
   display: inline-block;
+}
 
+.red {
+  color: red;
+}
+
+.gray {
+  color: gray;
+}
+
+button {
+  padding: 5px;
+  font-size: 1rem;
 }

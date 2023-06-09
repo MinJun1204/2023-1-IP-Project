@@ -1,5 +1,6 @@
-const API_KEY = 'T5vQIOQm4342YA16mXuzkw'
+const API_KEY = 'qLfO4s5Ypjdm2XrqCvbAhQ'
 const URL = 'https://api.odsay.com/v1/api/searchPubTransPathT?SX=126.926493082645&SY=37.6134436427887&EX=127.126936754911&EY=37.5004198786564&apiKey=T5vQIOQm4342YA16mXuzkw'
+const LIMIT = 3
 
 let startPos, endPos, polyline
 let map, places
@@ -105,15 +106,12 @@ async function initMap() {
 }
 
 function getGeolocation() {
-    console.log(navigator)
-    console.log("geolocation" in navigator)
-    
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(async (position) => {
             console.log('User Position:', position)
 
             setCenter(position.coords.longitude, position.coords.latitude)
-            setMarker(position.coords.longitude, position.coords.latitude)
+            setCurrentPositionMarker(position.coords.longitude, position.coords.latitude)
 
             let lowBusStations = await searchLowBusStations(position)
             
@@ -133,11 +131,11 @@ async function searchLowBusStations(position) {
             + `radius=500&`
             + `apiKey=${API_KEY}`
 
-    console.log(URL)
     return await fetchAPI(URL)
 }
 
 async function showLowBusStations(stations) {
+    stations = stations.slice(0, LIMIT)
     console.log(stations)
 
     for (let station of stations) {
@@ -151,9 +149,9 @@ async function showLowBusStations(stations) {
             iwContent += `<b>${busRoute.routeNm}&nbsp;</b>`
 
             if (busRoute.arrival1)
-                iwContent += `<span>${Math.floor(busRoute.arrival1.arrivalSec / 60)}분 ${busRoute.arrival1.arrivalSec % 60}초 | ${busRoute.arrival1.leftStation}정류장 전</span><br>`
+                iwContent += `<span class="red">${Math.floor(busRoute.arrival1.arrivalSec / 60)}분 ${busRoute.arrival1.arrivalSec % 60}초 | ${busRoute.arrival1.leftStation}정류장 전</span><br>`
             else
-                iwContent += `<span>도착 정보 없음</span><br>`
+                iwContent += `<span class="gray">도착 정보 없음</span><br>`
         }
 
         let markerPosition = new kakao.maps.LatLng(station.y, station.x)
@@ -177,7 +175,6 @@ async function showLowBusStations(stations) {
         })
     }
 }
-
 
 function setPointByClick() {
     kakao.maps.event.addListener(map, 'click', async function(mouseEvent) {
@@ -247,10 +244,10 @@ function setMarkerByClick(x, y, isDeparture) {
 function search() {
     $('input').keypress(async function(e) {
         let input = this
-        let selected = this.id
-
+        
         // When Enter Key Pressed
         if (e.which == 13 || e.keyCode == 13) {
+            let selected = this.id
             let keyword = $(this).val()
             $('#search').empty()
 
@@ -295,7 +292,7 @@ function search() {
                             $('#map').show(500)
 
                             setCenter(destination.x, destination.y)
-                            setMarkerByClick(departure.x, departure.y, false)
+                            setMarkerByClick(destination.x, destination.y, false)
                         }
 
                         if (departure && destination) {
@@ -383,7 +380,7 @@ async function showDirections() {
         let $direction = $(`<div class="direction" id="direction${i}"></div>`)
 
         let $info = $(`<div></div>`)
-        let $totalTime = $(`<h2>${direction.info.totalTime}분</h2>`)
+        let $totalTime = $(`<h2>${direction.info.totalTime}분&nbsp;</h2>`)
         let $distance = $(`<span>${(direction.info.totalDistance / 1000).toFixed(1)}km</span>`)
         // let $firstStation = $(`<p>${direction.info.firstStartStation} 정류장</p>`)
 
@@ -397,10 +394,10 @@ async function showDirections() {
                 let $laneNo, $startStation
 
                 if (path.trafficType == 1) {
-                    $laneNo = $(`<p class="subwayLaneNo">${path.lane[0].name.replace('수도권 ', '')} </p>`)
+                    $laneNo = $(`<p class="subwayLaneNo">${path.lane[0].name.replace('수도권 ', '')}</p>`)
                     $startStation = $(`<p class="subwayStation">${path.startName}역</p>`)
                 } else if (path.trafficType == 2) {
-                    $laneNo = $(`<p class="busLaneNo">${path.lane[0].busNo} </p>`)
+                    $laneNo = $(`<p class="busLaneNo">${path.lane[0].busNo}</p>`)
                     $startStation = $(`<p class="busStation">${path.startName} 정류장</p>`)
                 }
 
@@ -412,7 +409,7 @@ async function showDirections() {
             $direction.append($path)
         }
 
-        let $endStation = $(`<p>${direction.info.lastEndStation} 정류장</p>`)
+        let $endStation = $(`<div><p>${direction.info.lastEndStation} 정류장</p></div>`)
         $direction.append($endStation).append('<hr>')
 
         $('#result').append($direction)
@@ -425,6 +422,8 @@ async function showDirections() {
 }
 
 async function lowBusFilter(directions) {
+    directions.path = directions.path.slice(6, 6 + LIMIT)
+
     let result = []
 
     for (let path of directions.path) {
@@ -520,7 +519,7 @@ async function showDetailRoute(route) {
                         console.log(lowBusLane)
 
                         if (lowBusLane.arrival1) {
-                            $start.append(`<div><p>${lane.busNo} (저상) | ${Math.floor(lowBusLane.arrival1.arrivalSec / 60)}분 ${lowBusLane.arrival1.arrivalSec % 60}초 | ${lowBusLane.arrival1.leftStation}정류장 전<p></div>`)
+                            $start.append(`<div><p>${lane.busNo} (저상) <span class="red">${Math.floor(lowBusLane.arrival1.arrivalSec / 60)}분 ${lowBusLane.arrival1.arrivalSec % 60}초 | ${lowBusLane.arrival1.leftStation}정류장 전</span><p></div>`)
                         } else {
 
                         }
@@ -554,6 +553,22 @@ function setMarker(x, y) {
     let markerLocation = new kakao.maps.LatLng(y, x)
     let marker = new kakao.maps.Marker({
         position: markerLocation
+    })
+
+    marker.setMap(map)
+}
+
+function setCurrentPositionMarker(x, y) {
+    let imgSrc = 'https://static.vecteezy.com/system/resources/previews/016/314/339/original/red-circle-red-dot-icon-free-png.png'
+    let imgSize = new kakao.maps.Size(32, 32)
+    // let imgOption = { offset: new kakao.maps.Point(27, 69) }
+
+    let markerImage = new kakao.maps.MarkerImage(imgSrc, imgSize)
+    let markerPosition = new kakao.maps.LatLng(y, x)
+
+    let marker = new kakao.maps.Marker({
+        position: markerPosition,
+        image: markerImage
     })
 
     marker.setMap(map)
