@@ -156,6 +156,8 @@ function setMarkerByClick(x, y, isDeparture) {
 
 function search() {
     $('input').keypress(async function(e) {
+        e.preventDefault()
+        
         alert(e.which + " / " + e.keyCode)
 
         let input = this
