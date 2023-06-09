@@ -1,4 +1,13 @@
 extends layout
 
 block content
+  header
+    h2 저상버스 길찾기 서비스
+    form(action="#")
+      input(type="text", name="departure", id="departure", placeholder="출발지")
+      input(type="text", name="destination", id="destination", placeholder="도착지")
+
   #map
+  #search
+  #result
+  #detail
