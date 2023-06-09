@@ -105,6 +105,9 @@ async function initMap() {
 }
 
 function getGeolocation() {
+    console.log(navigator)
+    console.log("geolocation" in navigator)
+    
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(async (position) => {
             console.log('User Position:', position)
