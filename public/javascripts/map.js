@@ -160,7 +160,7 @@ function search() {
         let selected = this.id
 
         // When Enter Key Pressed
-        if (e.which == 13) {
+        if (e.which == 13 || e.keyCode == 13) {
             let keyword = $(this).val()
             $('#search').empty()
 
