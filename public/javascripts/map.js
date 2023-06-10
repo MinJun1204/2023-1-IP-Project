@@ -26,83 +26,6 @@ async function initMap() {
 
     map = new kakao.maps.Map(container, options)
     places = new kakao.maps.services.Places()
-
-    // Naver Maps
-
-    // let mapOptions = {
-    //     center: new N.LatLng(37.3595704, 127.105399),
-    //     zoom: 1
-    //     // mapTypeId: N.MapTypeId.HYBRID
-    // }
-
-    // // let map = new N.Map('map', mapOptions)
-
-    // let seoul = N.LatLngBounds(
-    //     N.LatLng(37.42829747263545, 126.76620435615891),
-    //     N.LatLng(37.7010174173061, 127.18379493229875)
-    // )
-
-    // let marker = new N.Marker({
-    //     position: N.LatLng(37.6134436427887, 126.926493082645),
-    //     map: map
-    // })
-
-    // let marker2 = new N.Marker({
-    //     position: N.LatLng(37.5004198786564, 127.126936754911),
-    //     map: map
-    // })
-
-    // let polyline = new N.Polyline({
-    //     map: map,
-    //     path: [
-    //         new N.LatLng(37.6134436427887, 126.926493082645),
-    //         new N.LatLng(37.5004198786564, 127.126936754911),
-    //     ],
-    //     strokeWeight: 10
-    // });
-
-    /*
-    polyline = new N.Polyline({
-        map: map,
-        path: [],
-        strokeColor: '#5347AA',
-        strokeWeight: 6
-    });
-    
-    N.Event.addListener(map, 'click', async function(e) {
-        let point = e.latlng
-
-        if (!startPos) {
-            startPos = point
-        } else if (!endPos) {
-            endPos = point
-        } else {
-            return
-        }
-    
-        // let path = polyline.getPath()
-        // path.push(point)
-    
-        new N.Marker({
-            map: map,
-            position: point
-        })
-
-        if (startPos && endPos) {
-            let directions = await getDirection()
-            console.log(polyline)
-            drawPath(directions)
-        }
-    })
-
-    // map.setZoom(1)
-    map.fitBounds(seoul)
-    // map.panBy(N.Point(100, 100))
-
-    let result = await fetchAPI(URL)
-
-    // console.log(result.result)
-    */
 }
 
 function getGeolocation() {
@@ -135,7 +58,7 @@ async function searchLowBusStations(position) {
 }
 
 async function showLowBusStations(stations) {
-    stations = stations.slice(0, LIMIT)
+    // stations = stations.slice(0, LIMIT)
     console.log(stations)
 
     for (let station of stations) {
@@ -422,7 +345,7 @@ async function showDirections() {
 }
 
 async function lowBusFilter(directions) {
-    directions.path = directions.path.slice(6, 6 + LIMIT)
+    // directions.path = directions.path.slice(6, 6 + LIMIT)
 
     let result = []
 
